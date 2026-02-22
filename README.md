@@ -126,7 +126,11 @@ Rule-based strike detection (not learned classification)
 - Model fine-tuning on combat datasets
 # 📌 Notes
 This project focuses on system design, temporal state management, and structured analytics from unstructured video data.
+## 🎥 Demo
 
+Short 10-second clip showing pose detection and strike validation:
+
+[Watch Demo](demo/Recording 2026-02-23%20043413.mp4)
 
 # It is not intended for official judging or real-time scoring systems.
 
