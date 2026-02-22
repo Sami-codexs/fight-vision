@@ -1,4 +1,4 @@
-<img width="593" height="518" alt="image" src="https://github.com/user-attachments/assets/737d4412-7152-41e6-8eab-2290d7091409" /># 🥊 Fight Vision
+# 🥊 Fight Vision
 
 Computer vision pipeline for fight analytics using YOLOv8-based detection, pose estimation, custom strike validation logic, and temporal momentum tracking.
 
