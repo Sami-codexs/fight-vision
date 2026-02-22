@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+
+# Model weights
+*.pt
+
+# Output files
+outputs/
+
+# Raw data
+data/
+
+# Temporary files
+Untitled-1.py
