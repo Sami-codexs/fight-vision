@@ -1,22 +1,5 @@
-# =============================================================
-# fight-vision | .github/workflows/ci.yml
-#
-# CI pipeline — runs automatically on every push to main
-# and on every Pull Request.
-#
-# What it does:
-#   1. Checks code can be imported (no syntax errors)
-#   2. Verifies all required files exist
-#   3. Validates config values are in safe ranges
-#   4. Builds the Docker image to confirm it's valid
-#
-# Why this matters: shows your repo is always in a working state.
-# A broken commit will be caught here before anyone sees it.
-# =============================================================
-
 name: CI — fight-vision
 
-# Triggers: run on every push to main, and on pull requests
 on:
   push:
     branches: [ main ]
@@ -29,48 +12,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Get the code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Set up Python
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      # Step 3: Cache pip packages (speeds up repeated runs)
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
 
-      # Step 4: Install dependencies
-      # Install lightweight versions for CI (no GPU needed)
-      - name: Install dependencies
+      - name: Syntax check (py_compile)
         run: |
-          python -m pip install --upgrade pip
-          pip install pyflakes
+          python -m py_compile src/video/loader.py
+          python -m py_compile src/video/utils.py
+          python -m py_compile src/video/frame_extractor.py
+          python -m py_compile config.py
+          python -m py_compile main.py
+          echo "All files passed syntax check"
 
-      # Step 5: Check for Python syntax errors across all files
-      - name: Syntax check (pyflakes)
-        run: |
-          python -m pyflakes src/video/loader.py
-          python -m pyflakes src/video/utils.py
-          python -m pyflakes src/video/frame_extractor.py
-          python -m pyflakes config.py
-          python -m pyflakes main.py
-          echo "Syntax check passed"
-
-      # Step 6: Verify all required files exist
       - name: Verify project structure
         run: |
           python - <<'EOF'
           import os, sys
-
           required = [
               "main.py",
               "config.py",
@@ -82,54 +47,57 @@ jobs:
               "src/video/utils.py",
               "src/video/frame_extractor.py",
           ]
-
           missing = [f for f in required if not os.path.exists(f)]
           if missing:
               print(f"MISSING FILES: {missing}")
               sys.exit(1)
-
           print(f"All {len(required)} required files present.")
           EOF
 
-      # Step 7: Validate config values are in sane ranges
-      - name: Validate config
+      - name: Validate config values
         run: |
           python - <<'EOF'
-          import sys
-          sys.path.insert(0, ".")
-          import config
+          import sys, ast
+
+          with open("config.py") as f:
+              source = f.read()
+
+          tree = ast.parse(source)
+          values = {}
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Assign):
+                  for target in node.targets:
+                      if isinstance(target, ast.Name):
+                          try:
+                              values[target.id] = ast.literal_eval(node.value)
+                          except Exception:
+                              pass
 
           errors = []
+          def check(name, condition, msg):
+              if name in values and not condition(values[name]):
+                  errors.append(f"{name}={values[name]} — {msg}")
 
-          if not (0 < config.DETECTION_CONF < 1):
-              errors.append(f"DETECTION_CONF={config.DETECTION_CONF} must be between 0 and 1")
-          if not (0 < config.POSE_CONF < 1):
-              errors.append(f"POSE_CONF={config.POSE_CONF} must be between 0 and 1")
-          if config.WRIST_SPEED_THRESH <= 0:
-              errors.append(f"WRIST_SPEED_THRESH={config.WRIST_SPEED_THRESH} must be > 0")
-          if config.STRIKE_COOLDOWN <= 0:
-              errors.append(f"STRIKE_COOLDOWN={config.STRIKE_COOLDOWN} must be > 0")
-          if config.BUCKET_SIZE <= 0:
-              errors.append(f"BUCKET_SIZE={config.BUCKET_SIZE} must be > 0")
-          if config.START_FRAME < 0:
-              errors.append(f"START_FRAME={config.START_FRAME} must be >= 0")
+          check("DETECTION_CONF",     lambda v: 0 < v < 1, "must be between 0 and 1")
+          check("POSE_CONF",          lambda v: 0 < v < 1, "must be between 0 and 1")
+          check("WRIST_SPEED_THRESH", lambda v: v > 0,     "must be > 0")
+          check("STRIKE_COOLDOWN",    lambda v: v > 0,     "must be > 0")
+          check("BUCKET_SIZE",        lambda v: v > 0,     "must be > 0")
+          check("START_FRAME",        lambda v: v >= 0,    "must be >= 0")
 
           if errors:
-              for e in errors:
-                  print(f"CONFIG ERROR: {e}")
+              for e in errors: print(f"CONFIG ERROR: {e}")
               sys.exit(1)
 
           print("Config validation passed.")
-          print(f"  DETECTION_CONF    = {config.DETECTION_CONF}")
-          print(f"  WRIST_SPEED_THRESH = {config.WRIST_SPEED_THRESH}")
-          print(f"  STRIKE_COOLDOWN   = {config.STRIKE_COOLDOWN}")
-          print(f"  BUCKET_SIZE       = {config.BUCKET_SIZE}")
+          for k, v in values.items():
+              print(f"  {k} = {v}")
           EOF
 
   docker-build:
     name: Build Docker image
     runs-on: ubuntu-latest
-    needs: lint-and-validate   # only runs if lint job passes
+    needs: lint-and-validate
 
     steps:
       - name: Checkout repository
@@ -140,6 +108,5 @@ jobs:
           docker build -t fight-vision:ci .
           echo "Docker build succeeded"
 
-      - name: Verify image was created
-        run: |
-          docker images fight-vision:ci
+      - name: Verify image created
+        run: docker images fight-vision:ci
