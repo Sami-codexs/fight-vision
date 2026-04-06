@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.env
+.venv/
+venv/
+
+# Model weights (too large for git — download separately)
+*.pt
+*.onnx
+
+# Video files (too large for git)
+data/raw/
+*.mp4
+*.avi
+*.mov
+
+# Outputs (generated files — not source code)
+outputs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

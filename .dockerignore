@@ -1,0 +1,34 @@
+# Don't copy these into the Docker image
+
+# Model weights — download separately inside container or mount
+*.pt
+*.onnx
+
+# Video files — mount at runtime with -v flag
+data/raw/
+*.mp4
+*.avi
+*.mov
+
+# Generated outputs
+outputs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Git
+.git/
+.gitignore
+
+# Dev files
+.venv/
+venv/
+.env
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

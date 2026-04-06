@@ -1,0 +1,7 @@
+# fight-vision dependencies
+# Install with: pip install -r requirements.txt
+
+opencv-python==4.9.0.80
+ultralytics==8.1.47
+numpy==1.26.4
+matplotlib==3.8.4
